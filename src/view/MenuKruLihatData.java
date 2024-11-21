@@ -4,41 +4,59 @@
  */
 package view;
 
-import controller.RequestController;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JScrollPane;
-import javax.swing.JTable;
-import javax.swing.table.DefaultTableModel;
-import model.Database;
-import java.awt.event.ActionListener;
+
+import controller.UserController;
 import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
+import java.sql.SQLException;
+
 
 public class MenuKruLihatData extends javax.swing.JFrame {
 
-    private RequestController requestController;
+    private UserController userController;
     public MenuKruLihatData() {
         initComponents();
-        requestController = new RequestController();
+        userController = new UserController();
         loadRequestData();
         setLocationRelativeTo(null);
+
+        btEdit.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                btEditActionPerformed(evt);
+            }
+        });
+        
+        btDelete.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent evt) {
+                btDeleteActionPerformed(evt);
+            }
+        });
     }
-        
-     private void loadRequestData() {
-        // Ambil model dari tabel yang sudah ada
-        DefaultTableModel tableModel = (DefaultTableModel) DataMasyarakat.getModel();
-        
-        // Kosongkan tabel terlebih dahulu (jika ada data sebelumnya)
-        tableModel.setRowCount(0);
-        
-        // Muat data dari database
-        requestController.loadUserDataMasyarakat(tableModel);
+    
+     private void refreshTable() {
+    // Refresh tabel untuk memuat ulang data dari database
+    loadRequestData();
+}
+
+private void loadRequestData() {
+    // Periksa apakah tabel sudah memiliki model
+    DefaultTableModel tableModel = (DefaultTableModel) DataMasyarakat.getModel();
+
+    // Bersihkan data sebelumnya di tabel
+    tableModel.setRowCount(0);
+
+    // Muat data terbaru dari database melalui RequestController
+    try {
+        userController.loadUserDataMasyarakat(tableModel);
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat memuat data: " + e.getMessage());
     }
+}
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -180,12 +198,22 @@ public class MenuKruLihatData extends javax.swing.JFrame {
         btDelete.setText("Delete");
         btDelete.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
         btDelete.setBorderPainted(false);
+        btDelete.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btDeleteActionPerformed(evt);
+            }
+        });
 
         btEdit.setBackground(new java.awt.Color(80, 200, 120));
         btEdit.setForeground(new java.awt.Color(255, 255, 255));
         btEdit.setText("Edit");
         btEdit.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
         btEdit.setBorderPainted(false);
+        btEdit.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btEditActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout panelputihLayout = new javax.swing.GroupLayout(panelputih);
         panelputih.setLayout(panelputihLayout);
@@ -250,6 +278,67 @@ public class MenuKruLihatData extends javax.swing.JFrame {
         dispose();
         new MenuKruRequestMasuk().setVisible(true);
     }//GEN-LAST:event_btKananMouseClicked
+
+    private void btEditActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btEditActionPerformed
+       
+        int selectedRow = DataMasyarakat.getSelectedRow();
+        if (selectedRow != -1) {
+            String currentUsername = DataMasyarakat.getValueAt(selectedRow, 3).toString();
+
+            String newKontak = JOptionPane.showInputDialog(this, "Masukkan kontak baru:", DataMasyarakat.getValueAt(selectedRow, 1));
+            String newDomisili = JOptionPane.showInputDialog(this, "Masukkan domisili baru:", DataMasyarakat.getValueAt(selectedRow, 2));
+            String newUsername = JOptionPane.showInputDialog(this, "Masukkan username baru:", currentUsername);
+            String newPassword = JOptionPane.showInputDialog(this, "Masukkan password baru:", DataMasyarakat.getValueAt(selectedRow, 4));
+
+            if (newKontak != null && newDomisili != null && newUsername != null && newPassword != null) {
+                try {
+                    boolean isUpdated = userController.updateUserData(currentUsername, newUsername, newPassword, newKontak, newDomisili);
+                    if (isUpdated) {
+                        JOptionPane.showMessageDialog(this, "Data berhasil diperbarui.");
+                        refreshTable();
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Data gagal diperbarui. Data tidak ditemukan.");
+                    }
+                } catch (SQLException e) {
+                    JOptionPane.showMessageDialog(this, "Error saat memperbarui data: " + e.getMessage());
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Perubahan dibatalkan.");
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Silakan pilih baris data untuk diedit.");
+        }
+    
+    }//GEN-LAST:event_btEditActionPerformed
+
+    private void btDeleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btDeleteActionPerformed
+        int selectedRow = DataMasyarakat.getSelectedRow();
+    if (selectedRow != -1) {
+        // Ambil username dari baris yang dipilih
+        String username = DataMasyarakat.getValueAt(selectedRow, 3).toString();
+
+        // Konfirmasi penghapusan
+        int confirm = JOptionPane.showConfirmDialog(this, 
+                "Apakah Anda yakin ingin menghapus data untuk username: " + username + "?", 
+                "Konfirmasi", 
+                JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                boolean isDeleted = userController.deleteUser(username);
+                if (isDeleted) {
+                    JOptionPane.showMessageDialog(this, "Data berhasil dihapus.");
+                    refreshTable(); // Perbarui tampilan tabel
+                } else {
+                    JOptionPane.showMessageDialog(this, "Data gagal dihapus. Username tidak ditemukan.");
+                }
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat menghapus data: " + e.getMessage());
+            }
+        }
+    } else {
+        JOptionPane.showMessageDialog(this, "Silakan pilih baris data untuk dihapus.");
+    }
+    }//GEN-LAST:event_btDeleteActionPerformed
 
     /**
      * @param args the command line arguments

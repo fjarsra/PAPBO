@@ -18,9 +18,7 @@ public class LoginController {
     }
 
     public boolean login(String username, String password) {
-        Connection connection = database.getConnection();
-
-        try {
+        try (Connection connection = database.getNewConnection()) {
             String query = "SELECT id_user, nama_lengkap FROM users WHERE username = ? AND password = ?";
             PreparedStatement statement = connection.prepareStatement(query);
             statement.setString(1, username);
@@ -41,25 +39,27 @@ public class LoginController {
             }
         } catch (SQLException e) {
             System.err.println("Gagal login: " + e.getMessage());
-        } finally {
-            database.closeConnection();
         }
         return false;
     }
 
     private boolean isKru(int idUser) throws SQLException {
         String query = "SELECT id_user FROM kru WHERE id_user = ?";
-        PreparedStatement statement = database.getConnection().prepareStatement(query);
-        statement.setInt(1, idUser);
-        ResultSet rs = statement.executeQuery();
-        return rs.next();
+        try (Connection connection = database.getNewConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, idUser);
+            ResultSet rs = statement.executeQuery();
+            return rs.next();
+        }
     }
 
     private boolean isPengguna(int idUser) throws SQLException {
         String query = "SELECT id_user FROM pengguna WHERE id_user = ?";
-        PreparedStatement statement = database.getConnection().prepareStatement(query);
-        statement.setInt(1, idUser);
-        ResultSet rs = statement.executeQuery();
-        return rs.next();
+        try (Connection connection = database.getNewConnection();
+             PreparedStatement statement = connection.prepareStatement(query)) {
+            statement.setInt(1, idUser);
+            ResultSet rs = statement.executeQuery();
+            return rs.next();
+        }
     }
 }

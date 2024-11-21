@@ -56,7 +56,7 @@ public class MenuUserHistory extends javax.swing.JFrame {
     hideIdRequestColumn();
 }
 
-    RequestController urs = new RequestController().updateRequestStatusInDatabase(HEIGHT, newStatus);
+    
 
 
     /**
@@ -285,22 +285,23 @@ public class MenuUserHistory extends javax.swing.JFrame {
     int selectedRow = HistoryRequest.getSelectedRow();
 
     if (selectedRow != -1) { // Pastikan ada baris yang dipilih
-        String status = tableModel.getValueAt(selectedRow, 4).toString(); // Kolom Status (sesuai dengan indeks kolom tabel)
-        int requestId = Integer.parseInt(tableModel.getValueAt(selectedRow, 0).toString()); // Kolom ID Request
+        String status = tableModel.getValueAt(selectedRow, 4).toString(); // Kolom Status (indeks 4)
+        int requestId = Integer.parseInt(tableModel.getValueAt(selectedRow, 0).toString()); // Kolom ID Request (indeks 0)
 
         if ("PENDING".equalsIgnoreCase(status)) {
             // Ubah status di database dan di tabel
-            updateRequestStatusInDatabase(requestId, "CANCEL");
-            tableModel.setValueAt("CANCEL", selectedRow, 4);
-
-            JOptionPane.showMessageDialog(this, "Status berhasil diubah menjadi CANCEL.");
+            if (requestController.updateRequestStatusInDatabase(requestId, "CANCEL")) {
+                tableModel.setValueAt("CANCEL", selectedRow, 4); // Perbarui kolom status di tabel
+                JOptionPane.showMessageDialog(this, "Status berhasil diubah menjadi CANCEL.");
+            } else {
+                JOptionPane.showMessageDialog(this, "Gagal mengubah status di database.");
+            }
         } else {
             JOptionPane.showMessageDialog(this, "Hanya dapat membatalkan request dengan status PENDING.");
         }
     } else {
         JOptionPane.showMessageDialog(this, "Silakan pilih baris terlebih dahulu.");
     }
-
 
 
 

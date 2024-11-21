@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import javax.swing.table.DefaultTableModel;
 import model.CurrentUser;
+import model.User;
 
 public class RequestController {
     private Database database;
@@ -24,7 +25,7 @@ public class RequestController {
                      + "JOIN pengguna p ON u.id_user = p.id_user "
                      + "JOIN sampah s ON r.sampah_id_sampah = s.id_sampah";
 
-        try (Connection connection = database.getConnection();
+        try (Connection connection = database.getNewConnection();
              PreparedStatement statement = connection.prepareStatement(query);
              ResultSet rs = statement.executeQuery()) {
 
@@ -47,7 +48,7 @@ public class RequestController {
     public boolean deleteRequest(int requestId) {
         String query = "DELETE FROM request WHERE id_request = ?";
 
-        try (Connection connection = database.getConnection();
+        try (Connection connection = database.getNewConnection();
              PreparedStatement statement = connection.prepareStatement(query)) {
 
             statement.setInt(1, requestId);
@@ -61,7 +62,7 @@ public class RequestController {
     public boolean updateRequestStatus(int requestId, String newStatus) {
         String query = "UPDATE request SET status = ? WHERE id_request = ?";
 
-        try (Connection connection = database.getConnection();
+        try (Connection connection = database.getNewConnection();
              PreparedStatement statement = connection.prepareStatement(query)) {
 
             statement.setString(1, newStatus);
@@ -75,7 +76,7 @@ public class RequestController {
 public boolean saveRequest(int userId, String sampahId) {
     String query = "INSERT INTO request (jam_masuk, users_id_user, sampah_id_sampah) VALUES (NOW(), ?, ?)";
     
-    try (Connection connection = database.getConnection();
+    try (Connection connection = database.getNewConnection();
          PreparedStatement statement = connection.prepareStatement(query)) {
 
         statement.setInt(1, userId);
@@ -88,20 +89,35 @@ public boolean saveRequest(int userId, String sampahId) {
 }
 
 public void loadRequestsHistory(DefaultTableModel tableModel) {
-        String query = "SELECT r.id_request, s.jenis_sampah, r.jam_masuk, r.jam_jemput, r.status, r.estimasi, r.kru_penjemput " +
-                   "FROM request r " +
-                   "JOIN sampah s ON r.sampah_id_sampah = s.id_sampah";
+    // Mendapatkan ID pengguna yang sedang login
+    User currentUser = CurrentUser.getInstance();
+    if (currentUser == null) {
+        System.err.println("Pengguna belum login.");
+        return;
+    }
 
-        try (Connection connection = database.getConnection();
-         PreparedStatement statement = connection.prepareStatement(query);
-         ResultSet resultSet = statement.executeQuery()) {
+    int currentUserId = currentUser.getIdUser();
 
+    // Query SQL dengan filter berdasarkan user_id
+    String query = "SELECT r.id_request, s.jenis_sampah, r.jam_masuk, r.jam_jemput, r.status, r.estimasi, r.kru_penjemput " +
+                   "FROM recycle.request r " +
+                   "JOIN recycle.sampah s ON r.sampah_id_sampah = s.id_sampah " +
+                   "WHERE r.users_id_user = ?"; // Menggunakan kolom yang benar
+
+    try (Connection connection = database.getNewConnection();
+         PreparedStatement statement = connection.prepareStatement(query)) {
+
+        // Mengatur parameter user_id
+        statement.setInt(1, currentUserId);
+
+        // Menjalankan query
+        try (ResultSet resultSet = statement.executeQuery()) {
             // Iterasi setiap baris hasil query
             while (resultSet.next()) {
                 Object[] rowData = {
                     resultSet.getInt("id_request"),         // Kolom 1: ID Request
                     resultSet.getString("jenis_sampah"),    // Kolom 2: Jenis Sampah
-                    resultSet.getString("jam_masuk"),     // Kolom 3: Jam Request
+                    resultSet.getString("jam_masuk"),       // Kolom 3: Jam Request
                     resultSet.getString("jam_jemput"),      // Kolom 4: Jam Jemput
                     resultSet.getString("status"),          // Kolom 5: Status
                     resultSet.getString("estimasi"),        // Kolom 6: Estimasi
@@ -110,10 +126,28 @@ public void loadRequestsHistory(DefaultTableModel tableModel) {
                 // Tambahkan data ke model tabel
                 tableModel.addRow(rowData);
             }
-        } catch (SQLException e) {
-            System.err.println("Gagal memuat data: " + e.getMessage());
         }
+    } catch (SQLException e) {
+        System.err.println("Gagal memuat data: " + e.getMessage());
     }
+}
+
+
+public boolean updateRequestStatusInDatabase(int requestId, String newStatus) {
+    String query = "UPDATE recycle.request SET status = ? WHERE id_request = ?";
+    try (Connection connection = database.getNewConnection();
+         PreparedStatement statement = connection.prepareStatement(query)) {
+
+        statement.setString(1, newStatus);
+        statement.setInt(2, requestId);
+
+        int rowsUpdated = statement.executeUpdate();
+        return rowsUpdated > 0;
+    } catch (SQLException e) {
+        System.err.println("Error updating request status: " + e.getMessage());
+    }
+    return false;
+}
 
 public void loadUserDataMasyarakat(DefaultTableModel tableModel) {
     String query = "SELECT u.nama_lengkap, u.username, u.password, p.kontak, p.domisili "
@@ -124,7 +158,7 @@ public void loadUserDataMasyarakat(DefaultTableModel tableModel) {
 
 
 
-    try (Connection connection = database.getConnection();
+    try (Connection connection = database.getNewConnection();
          PreparedStatement statement = connection.prepareStatement(query);
          ResultSet rs = statement.executeQuery()) {
 
